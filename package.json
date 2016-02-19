@@ -28,5 +28,6 @@
     "gulp-util": "*",
     "gulp-rename": "*"
   },
-  "main": "do.min.js"
+  "main": "do.min.js",
+  "dependencies": {}
 }

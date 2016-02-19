@@ -196,7 +196,9 @@
 
     var DoFunctionArray = extend(Do, { // Array of Functions
         construct: function() {
-            var no_context = this.arguments[3] === undefined,
+            var context = this.arguments[3],
+
+                no_context = context === undefined,
 
                 context = this.context = this.bind(no_context ? {} : context);
 
@@ -249,7 +251,7 @@
 
             this.contents = API(this.context, this, true);
             this.dø = API(this.dø||function() {
-                return that.do(that, arguments);
+                return that.do.apply(that, arguments);
             }, this);
         },
         do: function(anArg) {

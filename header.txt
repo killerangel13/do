@@ -1,0 +1,8 @@
+/*
+ * # dø - ${version}
+ * ${homepage}
+ *
+ * Copyright 2016 Contributors
+ * Released under the MIT license
+ */
+

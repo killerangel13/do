@@ -1,0 +1,32 @@
+{
+  "name": "op_do",
+  "author": "killerangel13",
+  "license": "MIT",
+  "version": "1.0.0",
+  "description": "Architecture from natural language concepts.",
+  "bugs": {
+    "url": "https://github.com/killerangel13/do/issues"
+  },
+  "homepage": "http://alt-o.net",
+  "keywords": [
+    "async",
+    "server",
+    "client",
+    "browser",
+    "ajax",
+    "argument",
+    "destructuring"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/killerangel13/do.git"
+  },
+  "devDependencies": {
+    "gulp": "*",
+    "gulp-header": "*",
+    "gulp-uglify": "*",
+    "gulp-util": "*",
+    "gulp-rename": "*"
+  },
+  "main": "do.min.js"
+}

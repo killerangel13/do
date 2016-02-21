@@ -188,7 +188,7 @@
                 // pass on ...rest arguments
                 args[i] = args[i].replace("...", "");
             }
-            this.standalone(args);
+            this["stand alone"](args);
 
             return context;
         }
@@ -291,7 +291,7 @@
                 .apply(null, args)
                 .call(this, i, did, died);
         },
-        standalone: function(args) {
+        "stand alone": function(args) {
             this.each = this["each alone"];
 
             var functions = this.arguments[0];
@@ -313,7 +313,7 @@
 
             doing[i] = this.iterate.call(this, el, i, did, died);
         },
-        standalone: function(args) {
+        "stand alone": function(args) {
             this.init = this["init alone"];
 
             this["iterate alone"] = close(this.iterate.toString(), args, this);
@@ -812,7 +812,7 @@
 
                 return this.dø;
             },
-            standalone: function(args) {
+            "stand alone": function(args) {
                 this.each = this["each alone"];
                 this["add op"] = this["add op alone"];
                 this.dø = this["dø alone"];

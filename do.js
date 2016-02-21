@@ -1,5 +1,5 @@
 /*
- * # dø - 1.0.0
+ * # dø - 1.0.2
  * http://alt-o.net/
  *
  * Copyright 2016 Contributors
@@ -712,13 +712,21 @@
                     count = 0;
 
                 // cue primary
-                for(var k in to_cue)
-                    if (cueing[k] === undefined)
+                for(var k in to_cue) {
+                    if (cueing[k] !== undefined)
+                        continue;
+                    var args = ops[k].arguments["get keys"](),
+                        in_ops = 0;
+                    for(var i=0,len=args.length;i<len;i++) {
+                        if (ops.hasOwnProperty(args[i]))
+                            in_ops++;
+                    }
+                    if (len === in_ops || 0 === in_ops)
                         count = oops.push({
                             order: orders[k] || 0,
                             k: k
                         });
-                    ;
+                }
                 var primary = oops.sort(function(a, b) {
                     return a.order === b.order ? 0:
                         a.order < b.order ? 1 : -1;
@@ -759,8 +767,10 @@
                     var args = to_cue[k],
                         i = args.indexOf(K),
                         count = args.length;
-                    if (i > -1 && 1 < count--)
+                    if (i > -1 && 1 < count-- && i !== count)
                         args[i] = args.pop();
+                    else if (i > -1)
+                        args.pop();
                     if (count !== 0)
                         continue;
                     cueing._[k] = true;

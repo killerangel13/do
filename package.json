@@ -2,7 +2,7 @@
   "name": "op_do",
   "author": "killerangel13",
   "license": "MIT",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Architecture from natural language concepts.",
   "bugs": {
     "url": "https://github.com/killerangel13/do/issues"
@@ -29,5 +29,6 @@
     "gulp-rename": "*"
   },
   "main": "do.min.js",
-  "dependencies": {}
+  "dependencies": {},
+  "readmeFilename": "README.md"
 }

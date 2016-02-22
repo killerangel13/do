@@ -489,6 +489,13 @@
                     var k = todo[i];
                     each.call(this, ops[k], k, i);
                 }
+                var did = this.did,
+                    keys = this.keys.did;
+                for(var i=0,len=keys.length;i<len;i++) {
+                    var k = keys[i];
+                    if (ops[k] === undefined)
+                        did[k] = bind1(did[k], this);
+                }
             },
             "each proxy": !ES6Proxy ? function(op, k, i) {
                 var that = op.this = op.this || API({
@@ -685,44 +692,51 @@
                 };
                 return op;
             },
+            "cue primes": function() {
+                var primes = this.primes,
+                    each = this.each;
+
+                for(var k in primes) {
+                    var op = primes[k];
+                    if (op.this.i > -1)
+                        // if not done
+                        each.call(this, k, op);
+                }
+            },
             cue: function() {
                 if (this.total === 0)
                     return;
 
                 this["set active"](true);
 
-                var ops = this.ops,
-                    to_cue = this["to cue"],
-                    primes = this.primes,
-                    orders = this.orders,
-                    each = this.each;
+                this["cue primes"]();
 
-                for(var k in primes) {
-                    // cue primes
-                    var op = primes[k];
-                    if (op.this.i > -1)
-                        // if not done
-                        each.call(this, k, op);
-                }
                 if((this.cued = this.cued || !this.active))
                     return;
 
-                var cueing = this.cueing._,
+                this["cue primary"]();
+            },
+            "cue primary": function() {
+                var ops = this.ops,
+                    to_cue = this["to cue"],
+                    cueing = this.cueing._,
+                    orders = this.orders,
+                    count = 0,
                     oops = [],
-                    count = 0;
+                    each = this.each;
 
-                // cue primary
                 for(var k in to_cue) {
                     if (cueing[k] !== undefined)
                         continue;
                     var args = ops[k].arguments["get keys"](),
                         in_ops = 0;
-                    for(var i=0,len=args.length;i<len;i++) {
-                        if (ops.hasOwnProperty(args[i]))
+                    for(var i=0,all=args.length;i<all;i++) {
+                        if (ops[args[i]] !== undefined)
                             in_ops++;
                     }
-                    if (len === in_ops || 0 === in_ops)
+                    if (all === in_ops || 0 === in_ops)
                         count = oops.push({
+
                             order: orders[k] || 0,
                             k: k
                         });

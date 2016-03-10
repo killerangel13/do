@@ -1,5 +1,5 @@
 /*
- * # dø - 1.0.3
+ * # dø - 1.0.4
  * http://alt-o.net/
  *
  * Copyright 2016 Contributors
@@ -16,12 +16,12 @@
     global.dø = dø;
 
     function dø(o, one, two, three, context) {
+        if (typeof o === "function")
 
-        if (typeof o !== "function")
-            context = undefined;
-        else
-            o = o.call(context = { js: o.toString() });
+            o = o.call(context = {
 
+                ø: { js: o.toString() }
+            });
         return deem(o, one, two, three, context);
     }
 
@@ -34,7 +34,7 @@
                 new DoFunctionObject(o, one, two, context);
     }
 
-    var ES6Proxy = (function() { // does VM work with Proxy?
+    var ES6Proxy = (function() { // Does VM work with Proxy?
         return (
             typeof Proxy === "function" && 
             dø === (new Proxy({},{ get: function(){ return dø }}))[Math.random()]
@@ -133,17 +133,19 @@
                 die.apply(null, arguments);
         },
         finish: function(active) {
-            if (typeof active === "boolean" &&
-                this["some died"] === true)
+            var boolean = typeof active === "boolean";
+
+            if (boolean && this["some died"] === true)
                 return this.die();
 
-            if (typeof active === "boolean")
+            if (boolean)
                 this["set active"](active);
 
             if (this.active === true)
                 this["end active"]();
 
             var next = this.next;
+
             if (next)
                 next(this.done);
             return 0;
@@ -152,11 +154,13 @@
             var doing = this.doing,
                 done = this.done,
                 dead = this.dead;
+
             for(var k in doing) {
                 var returned = doing[k];
+
                 if (typeof returned === "function" &&
-                    done.hasOwnProperty(k) === false &&
-                    dead.hasOwnProperty(k) === false)
+                    !done.hasOwnProperty(k) &&
+                    !dead.hasOwnProperty(k))
                     returned();
             }
             this["set active"](false);
@@ -170,27 +174,34 @@
             this.finish = bind(this.finish, this);
             this.die = bind(this.die, this);
 
-            if (context.js === undefined)
+            if (context.ø === undefined)
                 return context;
 
-            var args = nameParameters(context.js),
-                alone = context.alone = Boolean(args.length);
+            var args = context.ø["enclosing arguments"] || nameParameters(context.ø.js),
+                alone = context.alone = args.count > 0;
 
-            context.js = ES6Proxy !== true ? "no proxy" : "ES6 proxy";
+            context.ø.js = ES6Proxy !== true ? "no proxy" : "ES6 proxy";
 
             if (alone !== true)
                 return context;
 
             this.alone = true;
 
-            for(var i=0,len=args.length;i<len;i++) {
+            this["set active"] = this["set active alone"];
+            this["rests alone"] = args.hash[args.list[args.count-1]] === "...";
+            this.dø = this["dø alone"];
+            this["enclosing arguments"] = args;
+            this.enclosing = args.list;
+            this.enclosed = [];
 
-                // pass on ...rest arguments
-                args[i] = args[i].replace("...", "");
-            }
-            this["stand alone"](args);
+            this["stand alone"]();
 
             return context;
+        },
+        "set active alone": function(boolean) {
+            if (boolean === false)
+                this.enclosed.length = 0;
+            this.active = this.contents.active = boolean;
         }
     };
 
@@ -203,6 +214,8 @@
                 context = this.context = this.bind(no_context ? {} : context);
 
             this.next = this.arguments[2] || this.arguments.splice(1,1,undefined).pop();
+
+            this.dø = bind(this.dø, this);
 
             this.init();
 
@@ -250,21 +263,9 @@
             this.doing = {};
 
             this.contents = API(this.context, this, true);
-            this.dø = API(this.dø||function() {
-                return that.do.apply(that, arguments);
-            }, this);
+            this.dø = API(this.dø, this);
         },
-        do: function(anArg) {
-            if (anArg !== undefined)
-                for(var args=[],i=0,len=arguments.length;i<len;i++) // inlined slice
-                    /* "Ray, a drop of golden sun." */
-                    args[i] = arguments[i];
-            else
-                var args;
-
-            if (this.cued)
-                this.init.apply(this, args);
-
+        do: function() {
             this.cued = true;
             this["set active"](true);
 
@@ -278,27 +279,61 @@
             for(var i=0,len=functions.length;i<len;i++) {
                 if (this.active !== true)
                     break;
-                each.call(this, i, functions[i], doing, it.call(this, i, did), it.call(this, i, died), args);
+                each.call(this, i, functions[i], doing, it.call(this, i, did), it.call(this, i, died));
             }
             return this.dø;
+        },
+        dø: function() {
+            if (this.cued)
+                this.init();
+
+            return this.do.call(this);
         },
         each: function(i, func, doing, did, died) {
             doing[i] = func
                 .call(this, i, did, died);
         },
-        "each alone": function(i, func, doing, did, died, args) {
-            doing[i] = func
-                .apply(null, args)
-                .call(this, i, did, died);
-        },
-        "stand alone": function(args) {
-            this.each = this["each alone"];
+        "dø alone": function() {
+            if (this.cued)
+                return this.clone().apply(null, arguments);
 
-            var functions = this.arguments[0];
-            for(var i=0,len=functions.length;i<len;i++) {
-                var func = functions[i];
-                functions[i] = close(func.toString(), args, this);
+            var args = this.enclosed = [],
+                count = 0;
+
+            for(var i=0,len=arguments.length;i<len;i++)
+                // inlined slice
+                count = args.push(arguments[i]);
+
+            if (this["rests alone"]) {
+                var last = this.enclosing.length-1;
+
+                args[last] = args.splice(last, count);
             }
+
+            return this.do.call(this);
+        },
+        clone: function() {
+            var args = this.arguments;
+            return new DoFunctionArray(args[0], args[1], this.next, { ø: {
+                "enclosing arguments": this["enclosing arguments"]
+            }});
+        },
+        "stand alone": function() {
+            var cloned = this.context.ø["enclosing arguments"] !== undefined;
+            if (cloned)
+                return;
+
+            var enclosing = this.enclosing,
+
+                functions = this.arguments[0];
+
+            for(var i=0,len=functions.length;i<len;i++) {
+
+                var part = nameParameters(functions[i].toString(), true);
+
+                functions[i] = close(part.rest, enclosing, part.list, part.hash);
+            }
+            
         }
     });
 
@@ -313,15 +348,22 @@
 
             doing[i] = this.iterate.call(this, el, i, did, died);
         },
-        "stand alone": function(args) {
-            this.init = this["init alone"];
+        clone: function() {
+            var args = this.arguments;
 
-            this["iterate alone"] = close(this.iterate.toString(), args, this);
+            return new DoArray(args[0], this.iterate, args[1], this.next, { ø: {
+
+                "enclosing arguments": this["enclosing arguments"]
+            }});
         },
-        "init alone": function() {
-            this.iterate = this["iterate alone"].apply(null, arguments);
+        "stand alone": function() {
+            var cloned = this.context.ø["enclosing arguments"] !== undefined;
+            if (cloned)
+                return;
 
-            return this.super.init.apply(this, arguments);
+            var part = nameParameters(this.iterate.toString(), true);
+
+            this.iterate = close(part.rest, this.enclosing, part.list, part.hash);
         }
     });
 
@@ -345,13 +387,17 @@
                 };
                 var no_context = context === undefined,
                     context = this.context = this.bind(no_context ? {} : context),
+                    cache = this.cache = context.ø,
+                    alone = this.alone,
 
                     ops = this.ops = {},
                     todo = this.todo = copy(this.keys.o),
                     total = this.total = this.countdown = todo.length,
                     to_cue = this["to cue"] = {},
+                    cached = this.cached = Boolean(cache && cache.orders),
+                    parts = this.parts = cached ? cache.parts : {},
+                    orders = this.orders = cached ? cache.orders : {},
                     primes = this.primes = {},
-                    orders = this.orders = {},
                     cueing = this.cueing = {count: 0, _:{}},
                     rests = this.rests = false,
                     resting = {},
@@ -359,17 +405,16 @@
                     keys = this.keys.o;
                 for(var i = 0; i < total; i++) {
                     var k = keys[i],
-
                     func = o[k],
 
-                    js = func.toString(),
+                    part = parts[k] = parts[k] || nameParameters(func.toString(), alone),
 
-                    args = nameParameters(js),
+                    args = copy(part.list),
 
-                    last = args.length - 1,
+                    last = part.count - 1,
                     count = last,
                     // (argument, ...rest) => {
-                    rest = 0 <= last && args[last][0] === "." ? !!args.pop() : false;
+                    rest = 0 <= last && part.hash[args[last]] === "..." ? !!args.pop() : false;
 
                     rests = rests || rest;
 
@@ -391,7 +436,8 @@
                         ;
                     this.does(k);
 
-                    intersect(args, keys, orders);
+                    if (cached === false)
+                        intersect(args, keys, orders);
                 }
                 this.rests = rests;
 
@@ -687,7 +733,7 @@
             },
             "add op": function(k, func, args) {
                 var op = this.ops[k] = {
-                    arguments: new Net(copy(args)),
+                    arguments: new Net(args),
                     function: func
                 };
                 return op;
@@ -802,49 +848,70 @@
                 this.doing[k] = op.function.apply(op.this, op.arguments["get defined"]());
             },
             "add op alone": function(k, func, args) {
-                var op = this.ops[k] = {
-                    arguments: new Net(copy(args)),
-                    function: close(func.toString(), this.enclosing, this)
+
+                var part = this.parts[k],
+                    
+                    op = this.ops[k] = {
+                    arguments: new Net(args),
+
+                    function: this.cached !== true ?
+                        
+                        close(part.rest, this.enclosing, part.list, part.hash):
+
+                        this.cache.functions[k]
                 };
                 return op;
             },
-            "each alone": function(k, op) {
-                if (this.cued === false)
-                    this["de-cue"](k);
-
-                this.doing[k] = op.function.apply(null, this.enclosed).apply(op.this, op.arguments["get defined"]());
+            "stand alone": function(args) {
+                this["add op"] = this["add op alone"];
             },
             "dø alone": function() {
-                if (this.cued)
-                    this.reset();
+                if (this.cueing.count !== 0)
+                    return this.clone().apply(null, arguments);
 
-                var args = this.enclosed = [];
+                var args = this.enclosed,
+                    count = 0;
+
+                args.length = 0;
+
                 for(var i=0,len=arguments.length;i<len;i++) // inlined slice
-                    args[i] = arguments[i];
+                    count = args.push(arguments[i]);
+
+                if (this["rests alone"]) {
+                    var last = this.enclosing.length-1;
+                    args[last] = args.splice(last, count);
+                }
 
                 this.cue();
 
                 return this.dø;
             },
-            "stand alone": function(args) {
-                this.each = this["each alone"];
-                this["add op"] = this["add op alone"];
-                this.dø = this["dø alone"];
-                this.enclosing = args;
-                this["set active"] = this["set active alone"];
-            },
-            "set active alone": function(boolean) {
-                if (boolean === false)
-                    this.enclosed = undefined;
-                this.active = this.contents.active = boolean;
+            clone: function() {
+                var ops = this.ops,
+                    args = this.arguments,
+                    functions = {};
+
+                for(var k in ops)
+                    functions[k] = ops[k].function;
+
+                return new dø(args[0], args[1], this.next, { ø: {
+                    parts: this.parts,
+                    orders: this.orders,
+                    functions: functions,
+                    "enclosing arguments": this["enclosing arguments"]
+                }});
             }
         });
         return dø;
     })();
     
-    function nameParameters(js) {
-
-        var args = [],
+    function nameParameters(js, deep) {
+        var count = 0,
+            named = false,
+            args = [],
+            hash = {},
+            resting = "",
+            rest = "",
             comment = "", /*//*/
             bracket = 0, // []
             brace = 0, // {}
@@ -889,6 +956,16 @@
                 continue;
             }
 
+            if (named === true) {
+
+                if (char === "{") {
+
+                    rest = js.slice(i+1);
+                    break;
+                }
+                continue;
+            }
+
             if (def) { // Default value
 
                 if (char === "," && paren === 1 && bracket === 0 && brace === 0)
@@ -906,16 +983,24 @@
                 else if (char === "}")
                     brace--;
 
-                if (paren === 0)
-                    break;
+                if (paren === 0) {
 
+                    if (deep !== true)
+                        break;
+
+                    named = true;
+                    def = false;
+                }
                 continue;
             
             } else if (char === "=") {
                 def = true;
 
-                args.push(arg);
-                arg = "";
+                if (arg !== "" && hash.hasOwnProperty(arg) === false) {
+                    count = args.push(arg);
+                    hash[arg] = resting;
+                }
+                arg = resting = "";
                 continue;
 
             } else if (char === "[" || char === "]")
@@ -929,10 +1014,19 @@
 
             } else if (paren === 1 && char === ")") {
 
-                if (arg !== "" && args.indexOf(arg) === -1)
-                    args.push(arg);
+                if (arg !== "" && hash.hasOwnProperty(arg) === false) {
+                    count = args.push(arg);
+                    hash[arg] = resting;
+                }
 
-                break;
+                if (deep !== true)
+                    break;
+
+                arg = resting = "";
+
+                named = true;
+                paren--;
+                continue;
             }
 
             if (paren === 0)
@@ -958,19 +1052,30 @@
                 continue;
 
             if (char === ",") {
-                if (arg.length && args.indexOf(arg) === -1)
-                    args.push(arg);
-
-                arg = "";
+                if (arg !== "" && hash.hasOwnProperty(arg) === false) {
+                    count = args.push(arg);
+                    hash[arg] = resting;
+                }
+                arg = resting = "";
                 continue;
             }
 
             if (whitespace.test(char) || char === ")")
                 continue;
 
+            if (char === ".") {
+                resting = "...";
+                continue;
+            }
+
             arg += char;
         }
-        return args;
+        return {
+            list: args,
+            count: count,
+            hash: hash,
+            rest: rest
+        };
     }
     var whitespace = /(\s)|(\r)/;
 
@@ -1000,35 +1105,39 @@
 
         return o;
     }
-    function close(js, args, context) {
-        var js = "'use strict';\nreturn {\n"+
-                
-                "function: ("+js+"),\n"+
 
-                "setters: [";
+    function close(body, outer, inner, inner_hash) {
+        var args = "",
+            inner_length = inner.length,
+            last = inner[inner_length-1];
+        if (inner_hash[last] !== "...")
+            args = inner.join(", ");
+        else
+            for(var i=0;i<inner_length;i++) {
+                if (i === inner_length - 1)
+                    args = args + "..." + last;
+                else
+                    args = args + inner[i] + ", ";
+            };
 
-        for(var i=0,len=args.length;i<len;i++)
-            js += (
-                "\nfunction(val) {"+
+        var pre = "'use strict';\nreturn (function("+args+") {\n    "+
+            "var ";
+        for(var i=0,a=0,len=outer.length;i<len;i++) {
 
-                args[i]+" = val}"+
+            var outer_name = outer[i];
 
-                (i < len-1 ? "," : "]}")
-            )
-        ;
-        var func = (new ApplyFunction(args.concat([js]))).call(context);
-        return function() {
-            for(var i=0,len=func.setters.length;i<len;i++) {
-                func.setters[i](arguments[i]);
-            }
-            return func.function;
-        };
+            if (inner_hash.hasOwnProperty(outer_name))
+                continue;
+            
+            if (a > 0)
+                pre = pre + ",\n        ";
+
+            pre = pre + outer_name + " = this.enclosed["+i+"]";
+
+            a++;
+        }
+        return (new Function(pre + ";\n" + body + ");"))();
     }
-    function ApplyFunction(args) {
-        return Function.apply(this, args);
-    }
-    ApplyFunction.prototype = Function.prototype;
-
     function copy(arr) {
         var len = arr.length,
             ret = new Array(len);

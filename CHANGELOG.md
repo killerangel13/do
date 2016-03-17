@@ -9,3 +9,7 @@ Call this.did.{parameter name}().{parameter name}() - bug
 __1.0.4__
 
 Carry functions, orders and parts for isolates - optimization
+
+__1.0.5__
+
+Take a context argument - feature

@@ -1,5 +1,5 @@
 /*
- * # dø - 1.0.5
+ * # dø - 1.0.6
  * http://alt-o.net/
  *
  * Copyright 2016 Contributors
@@ -176,7 +176,7 @@
             this.finish = bind(this.finish, this);
             this.die = bind(this.die, this);
 
-            var closure = context !== undefined && (
+            var closure = (
                 context.alone === true ||
                 context.js !== undefined
             );

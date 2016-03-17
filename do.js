@@ -1,5 +1,5 @@
 /*
- * # dø - 1.0.4
+ * # dø - 1.0.5
  * http://alt-o.net/
  *
  * Copyright 2016 Contributors
@@ -331,7 +331,7 @@
 
                 var part = nameParameters(functions[i].toString(), true);
 
-                functions[i] = close(part.rest, enclosing, part.list, part.hash);
+                functions[i] = close("i"+i, part.rest, enclosing, part.list, part.hash);
             }
             
         }
@@ -363,7 +363,7 @@
 
             var part = nameParameters(this.iterate.toString(), true);
 
-            this.iterate = close(part.rest, this.enclosing, part.list, part.hash);
+            this.iterate = close("iterate", part.rest, this.enclosing, part.list, part.hash);
         }
     });
 
@@ -856,7 +856,7 @@
 
                     function: this.cached !== true ?
                         
-                        close(part.rest, this.enclosing, part.list, part.hash):
+                        close(k, part.rest, this.enclosing, part.list, part.hash):
 
                         this.cache.functions[k]
                 };
@@ -1106,7 +1106,7 @@
         return o;
     }
 
-    function close(body, outer, inner, inner_hash) {
+    function close(name, body, outer, inner, inner_hash) {
         var args = "",
             inner_length = inner.length,
             last = inner[inner_length-1];
@@ -1120,7 +1120,8 @@
                     args = args + inner[i] + ", ";
             };
 
-        var pre = "'use strict';\nreturn (function("+args+") {\n    "+
+        var pre = "'use strict';\n"+
+            "return (function "+name+"("+args+") {\n\n    "+
             "var ";
         for(var i=0,a=0,len=outer.length;i<len;i++) {
 
@@ -1136,7 +1137,7 @@
 
             a++;
         }
-        return (new Function(pre + ";\n" + body + ");"))();
+        return (new Function(pre + ";\n\n" + body + ");"))();
     }
     function copy(arr) {
         var len = arr.length,

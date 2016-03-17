@@ -16,12 +16,12 @@
     global.dø = dø;
 
     function dø(o, one, two, three, context) {
+
         if (typeof o === "function")
-
             o = o.call(context = {
-
-                ø: { js: o.toString() }
+                js: o.toString()
             });
+
         return deem(o, one, two, three, context);
     }
 
@@ -169,22 +169,34 @@
             return this.active = this.contents.active = boolean;
         },
         bind: function(context) {
-            this.context = context;
+            var context = context || {};
+
+            this["call context"] = context;
 
             this.finish = bind(this.finish, this);
             this.die = bind(this.die, this);
 
-            if (context.ø === undefined)
-                return context;
+            var closure = context !== undefined && (
+                context.function !== undefined ||
+                context.js !== undefined
+            );
+            if (closure)
+                this["bind closure"](context);
 
-            var args = context.ø["enclosing arguments"] || nameParameters(context.ø.js),
+            this.dø = bind(this.dø, this);
+
+            return context;
+        },
+        "bind closure": function(context) {
+            var args = context["enclosing arguments"] || nameParameters(context.js),
                 alone = context.alone = args.count > 0;
+            if (alone)
+                this["stand alone"](args);
 
-            context.ø.js = ES6Proxy !== true ? "no proxy" : "ES6 proxy";
-
-            if (alone !== true)
-                return context;
-
+            context.function = true;
+            context.js = "";
+        },
+        "stand alone": function(args) {
             this.alone = true;
 
             this["set active"] = this["set active alone"];
@@ -193,33 +205,38 @@
             this["enclosing arguments"] = args;
             this.enclosing = args.list;
             this.enclosed = [];
-
-            this["stand alone"]();
-
-            return context;
         },
         "set active alone": function(boolean) {
             if (boolean === false)
                 this.enclosed.length = 0;
             this.active = this.contents.active = boolean;
+        },
+        "dø alone": function() {
+            var args = this.enclosed = [],
+                count = 0;
+
+            for(var i=0,len=arguments.length;i<len;i++) // inlined slice
+                count = args.push(arguments[i]);
+
+            if (this["rests alone"]) {
+                var last = this.enclosing.length-1;
+
+                args[last] = args.splice(last, count);
+            }
+            this.context = args[0];
+            this.refresh();
         }
     };
 
     var DoFunctionArray = extend(Do, { // Array of Functions
         construct: function() {
-            var context = this.arguments[3],
-
-                no_context = context === undefined,
-
-                context = this.context = this.bind(no_context ? {} : context);
+            var context = this.bind(this.arguments[3]);
 
             this.next = this.arguments[2] || this.arguments.splice(1,1,undefined).pop();
 
-            this.dø = bind(this.dø, this);
-
             this.init();
 
-            return context.alone === true || no_context ?
+            return context.alone === true || !context.function ?
                 this.dø:
                 this.dø();
         },
@@ -253,17 +270,18 @@
             this["some died"] = false;
             this.dead = {};
             this.cued = false;
+            this.contents = {};
 
             this.net = this.net ?
                 this.net.empty():
                  new Net(NumberInArray(this.arguments[0].length));
 
             this.countdown = this.net.counts[0];
-            this.done = this.done||this.net._[1];
+
+            this.done = this.done || this.net._[1];
             this.doing = {};
 
-            this.contents = API(this.context, this, true);
-            this.dø = API(this.dø, this);
+            this.refresh();
         },
         do: function() {
             this.cued = true;
@@ -283,9 +301,17 @@
             }
             return this.dø;
         },
-        dø: function() {
+        refresh: function() {
+            API(this.contents, this, true);
+            API(this.dø, this);
+        },
+        dø: function(context) {
             if (this.cued)
-                this.init();
+                return this.clone().apply(null, arguments);
+
+            this.context = context;
+
+            this.refresh();
 
             return this.do.call(this);
         },
@@ -293,33 +319,18 @@
             doing[i] = func
                 .call(this, i, did, died);
         },
-        "dø alone": function() {
-            if (this.cued)
-                return this.clone().apply(null, arguments);
-
-            var args = this.enclosed = [],
-                count = 0;
-
-            for(var i=0,len=arguments.length;i<len;i++)
-                // inlined slice
-                count = args.push(arguments[i]);
-
-            if (this["rests alone"]) {
-                var last = this.enclosing.length-1;
-
-                args[last] = args.splice(last, count);
-            }
-
-            return this.do.call(this);
-        },
         clone: function() {
             var args = this.arguments;
-            return new DoFunctionArray(args[0], args[1], this.next, { ø: {
-                "enclosing arguments": this["enclosing arguments"]
-            }});
+            return new DoFunctionArray(args[0], args[1], this.next, {
+                function: this["call context"].function,
+                "enclosing arguments": this["enclosing arguments"],
+                alone: this.alone
+            });
         },
-        "stand alone": function() {
-            var cloned = this.context.ø["enclosing arguments"] !== undefined;
+        "stand alone": function(args) {
+            this.super["stand alone"].call(this, args);
+
+            var cloned = this["call context"]["enclosing arguments"] !== undefined;
             if (cloned)
                 return;
 
@@ -334,6 +345,14 @@
                 functions[i] = close("i"+i, part.rest, enclosing, part.list, part.hash);
             }
             
+        },
+        "dø alone": function() {
+            if (this.cued)
+                return this.clone().apply(null, arguments);
+
+            Do.prototype["dø alone"].apply(this, arguments);
+
+            return this.do.call(this);
         }
     });
 
@@ -351,13 +370,16 @@
         clone: function() {
             var args = this.arguments;
 
-            return new DoArray(args[0], this.iterate, args[1], this.next, { ø: {
-
-                "enclosing arguments": this["enclosing arguments"]
-            }});
+            return new DoArray(args[0], this.iterate, args[1], this.next, {
+                function: this["call context"].function,
+                "enclosing arguments": this["enclosing arguments"],
+                alone: this.alone
+            });
         },
-        "stand alone": function() {
-            var cloned = this.context.ø["enclosing arguments"] !== undefined;
+        "stand alone": function(args) {
+            Do.prototype["stand alone"].call(this, args);
+
+            var cloned = this["call context"]["enclosing arguments"] !== undefined;
             if (cloned)
                 return;
 
@@ -381,22 +403,20 @@
                 this.did = {};
                 this.died = {};
                 this.counts = [];
+                this.contents = {};
                 this.keys = {
                     o: Object.keys(o),
                     did: []
                 };
-                var no_context = context === undefined,
-                    context = this.context = this.bind(no_context ? {} : context),
-                    cache = this.cache = context.ø,
+                var context = this.bind(context),
                     alone = this.alone,
-
                     ops = this.ops = {},
                     todo = this.todo = copy(this.keys.o),
                     total = this.total = this.countdown = todo.length,
                     to_cue = this["to cue"] = {},
-                    cached = this.cached = Boolean(cache && cache.orders),
-                    parts = this.parts = cached ? cache.parts : {},
-                    orders = this.orders = cached ? cache.orders : {},
+                    cached = this.cached = Boolean(context.orders || context.parts),
+                    orders = this.orders = context.orders || {},
+                    parts = this.parts = context.parts || {},
                     primes = this.primes = {},
                     cueing = this.cueing = {count: 0, _:{}},
                     rests = this.rests = false,
@@ -450,62 +470,32 @@
                 for(var k in o)
                     to_cue[k] = copy(ops[k].arguments["get keys"]());
 
-                this.contents = context;
-
                 this.proxy();
 
-                API(context, this, true);
-
-                var dø = this.dø = API(bind(this.dø, this), this);
-
-                return context.alone === true || no_context ?
-                    dø:
-                    dø();
-            },
-            reset: function() {
-                this["end active"]();
-                this.cued = false;
-                var keys = this.keys.o,
-                    ops = this.ops,
-                    total = this.countdown = this.total,
-                    to_cue = this["to cue"];
-
-                for(var i=0; i < total; i++) {
-                    var k = keys[i],
-                        op = ops[k],
-                        args = op.arguments;
-
-                    to_cue[k] = copy(args["get keys"]());
-                    args.empty();
-                    op.this.i = i;
-                }
-                this.todo = copy(this.keys.o);
-                this.counts.length = this.count = 0;
-                this.done = {};
-                this.dead = {};
-                this.doing = {};
-                this.cueing._ = {};
-                this.cueing.count = 0;
-                this["set active"](false);
-                this["some died"] = false;
-                if (this.record !== undefined)
-                    this.record = [];
-
                 this.refresh();
+
+                return context.alone === true || !context.function ?
+                    this.dø:
+                    this.dø();
             },
             refresh: !ES6Proxy ? function() {
-                var ops = this.ops;
+                var ops = this.ops,
+                    context = this.context,
+                    done = this.done,
+                    doing = this.doing,
+                    dead = this.dead;
                 for(var k in ops) {
                     var that = ops[k].this;
-                    that.done = this.done;
-                    that.dead = this.dead;
-                    that.doing = this.doing;
+                    that.done = done;
+                    that.doing = doing;
+                    that.dead = dead;
+                    that.context = context;
                 }
-                API(this.contents, this);
+                API(this.contents, this, true);
                 API(this.dø, this);
             }:
             function() {
-                API(this.contents, this);
+                API(this.contents, this, true);
                 API(this.dø, this);
             },
             proxy: !ES6Proxy ? function() {
@@ -808,9 +798,13 @@
                         return;
                 }
             },
-            dø: function() {
+            dø: function(context) {
                 if (this.cueing.count !== 0)
-                    this.reset();
+                    return this.clone().apply(null, arguments);
+
+                this.context = context;
+
+                this.refresh();
 
                 this.cue();
 
@@ -858,29 +852,20 @@
                         
                         close(k, part.rest, this.enclosing, part.list, part.hash):
 
-                        this.cache.functions[k]
+                        this["call context"].functions[k]
                 };
                 return op;
             },
             "stand alone": function(args) {
+                this.super["stand alone"].call(this, args);
+
                 this["add op"] = this["add op alone"];
             },
             "dø alone": function() {
                 if (this.cueing.count !== 0)
                     return this.clone().apply(null, arguments);
 
-                var args = this.enclosed,
-                    count = 0;
-
-                args.length = 0;
-
-                for(var i=0,len=arguments.length;i<len;i++) // inlined slice
-                    count = args.push(arguments[i]);
-
-                if (this["rests alone"]) {
-                    var last = this.enclosing.length-1;
-                    args[last] = args.splice(last, count);
-                }
+                this.super["dø alone"].apply(this, arguments);
 
                 this.cue();
 
@@ -894,12 +879,14 @@
                 for(var k in ops)
                     functions[k] = ops[k].function;
 
-                return new dø(args[0], args[1], this.next, { ø: {
+                return new dø(args[0], args[1], this.next, {
+                    alone: this.alone,
+                    "enclosing arguments": this["enclosing arguments"],
+                    function: this["call context"].function,
                     parts: this.parts,
                     orders: this.orders,
-                    functions: functions,
-                    "enclosing arguments": this["enclosing arguments"]
-                }});
+                    functions: functions
+                });
             }
         });
         return dø;
@@ -1080,6 +1067,9 @@
     var whitespace = /(\s)|(\r)/;
 
     function API(o, context, contents) {
+
+        o.context = context.context;
+
         if (contents === true)
             o.active = context.active;
         else
@@ -1094,11 +1084,9 @@
         o.doing = context.doing;
         o.die = context.die;
         o.dead = context.dead;
-
         var did = context.did;
         if (did !== undefined)
             o.did = did;
-
         var died = context.died;
         if (died !== undefined)
             o.died = died;

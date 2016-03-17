@@ -177,7 +177,7 @@
             this.die = bind(this.die, this);
 
             var closure = context !== undefined && (
-                context.function !== undefined ||
+                context.alone === true ||
                 context.js !== undefined
             );
             if (closure)
@@ -322,7 +322,6 @@
         clone: function() {
             var args = this.arguments;
             return new DoFunctionArray(args[0], args[1], this.next, {
-                function: this["call context"].function,
                 "enclosing arguments": this["enclosing arguments"],
                 alone: this.alone
             });
@@ -371,7 +370,6 @@
             var args = this.arguments;
 
             return new DoArray(args[0], this.iterate, args[1], this.next, {
-                function: this["call context"].function,
                 "enclosing arguments": this["enclosing arguments"],
                 alone: this.alone
             });
@@ -882,7 +880,6 @@
                 return new dø(args[0], args[1], this.next, {
                     alone: this.alone,
                     "enclosing arguments": this["enclosing arguments"],
-                    function: this["call context"].function,
                     parts: this.parts,
                     orders: this.orders,
                     functions: functions

@@ -893,7 +893,8 @@
     })();
     
     function nameParameters(js, deep) {
-        var count = 0,
+        var js = js || "",
+            count = 0,
             named = false,
             args = [],
             hash = {},

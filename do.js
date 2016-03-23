@@ -17,11 +17,21 @@
 
     function dø(o, one, two, three, context) {
 
-        if (typeof o === "function")
-            o = o.call(context = {
-                js: o.toString()
-            });
+        if (typeof o !== "function")
+            return deem(o, one, two, three, context);
 
+        var enclosure = nameParameters(o.toString(), true);
+
+        o = enclosure.count > 0 ?
+
+            close("dø", enclosure).call(context = {
+                alone: true,
+                enclosure: enclosure
+            }):
+
+            o.call(context = {
+                enclosure: enclosure
+            });
         return deem(o, one, two, three, context);
     }
 
@@ -118,10 +128,11 @@
 
     function Do(one, two, three, four, five) {
         var args = this.arguments = [];
+        
         // inlined slice
-        for(var i=0,len=arguments.length;i<len;i++) {
+        for(var i=0,len=arguments.length;i<len;i++)
             args.push(arguments[i]);
-        }
+
         return this.construct.call(this, one, two, three, four, five);
     }
     Do.prototype = {
@@ -176,11 +187,7 @@
             this.finish = bind(this.finish, this);
             this.die = bind(this.die, this);
 
-            var closure = (
-                context.alone === true ||
-                context.js !== undefined
-            );
-            if (closure)
+            if (context.alone === true)
                 this["bind closure"](context);
 
             this.dø = bind(this.dø, this);
@@ -188,22 +195,21 @@
             return context;
         },
         "bind closure": function(context) {
-            var args = context["enclosing arguments"] || nameParameters(context.js),
-                alone = context.alone = args.count > 0;
+            var enclosure = context.enclosure,
+                alone = context.alone = enclosure.count > 0;
             if (alone)
-                this["stand alone"](args);
+                this["stand alone"](enclosure);
 
             context.function = true;
-            context.js = "";
         },
-        "stand alone": function(args) {
+        "stand alone": function(enclosure) {
             this.alone = true;
 
             this["set active"] = this["set active alone"];
-            this["rests alone"] = args.hash[args.list[args.count-1]] === "...";
+            this["rests alone"] = enclosure.hash[enclosure.list[enclosure.count-1]] === "...";
             this.dø = this["dø alone"];
-            this["enclosing arguments"] = args;
-            this.enclosing = args.list;
+            this.enclosure = enclosure;
+            this.enclosing = enclosure.list;
             this.enclosed = [];
         },
         "set active alone": function(boolean) {
@@ -212,18 +218,18 @@
             this.active = this.contents.active = boolean;
         },
         "dø alone": function() {
-            var args = this.enclosed = [],
+            var enclosed = this.enclosed = [],
                 count = 0;
 
             for(var i=0,len=arguments.length;i<len;i++) // inlined slice
-                count = args.push(arguments[i]);
+                count = enclosed.push(arguments[i]);
 
             if (this["rests alone"]) {
                 var last = this.enclosing.length-1;
 
-                args[last] = args.splice(last, count);
+                enclosed[last] = enclosed.splice(last, count);
             }
-            this.context = args[0];
+            this.context = enclosed[0];
             this.refresh();
         }
     };
@@ -322,15 +328,15 @@
         clone: function() {
             var args = this.arguments;
             return new DoFunctionArray(args[0], args[1], this.next, {
-                "enclosing arguments": this["enclosing arguments"],
+                clone: true,
+                enclosure: this.enclosure,
                 alone: this.alone
             });
         },
         "stand alone": function(args) {
             this.super["stand alone"].call(this, args);
 
-            var cloned = this["call context"]["enclosing arguments"] !== undefined;
-            if (cloned)
+            if (this["call context"].clone === true)
                 return;
 
             var enclosing = this.enclosing,
@@ -341,7 +347,7 @@
 
                 var part = nameParameters(functions[i].toString(), true);
 
-                functions[i] = close("i"+i, part.rest, enclosing, part.list, part.hash);
+                functions[i] = close("i"+i, part, enclosing);
             }
             
         },
@@ -370,20 +376,20 @@
             var args = this.arguments;
 
             return new DoArray(args[0], this.iterate, args[1], this.next, {
-                "enclosing arguments": this["enclosing arguments"],
+                clone: true,
+                enclosure: this.enclosure,
                 alone: this.alone
             });
         },
         "stand alone": function(args) {
             Do.prototype["stand alone"].call(this, args);
 
-            var cloned = this["call context"]["enclosing arguments"] !== undefined;
-            if (cloned)
+            if (this["call context"].clone === true)
                 return;
 
             var part = nameParameters(this.iterate.toString(), true);
 
-            this.iterate = close("iterate", part.rest, this.enclosing, part.list, part.hash);
+            this.iterate = close("iterate", part, this.enclosing);
         }
     });
 
@@ -848,7 +854,7 @@
 
                     function: this.cached !== true ?
                         
-                        close(k, part.rest, this.enclosing, part.list, part.hash):
+                        close(k, part, this.enclosing):
 
                         this["call context"].functions[k]
                 };
@@ -879,10 +885,10 @@
 
                 return new dø(args[0], args[1], this.next, {
                     alone: this.alone,
-                    "enclosing arguments": this["enclosing arguments"],
                     parts: this.parts,
                     orders: this.orders,
-                    functions: functions
+                    functions: functions,
+                    enclosure: this.enclosure
                 });
             }
         });
@@ -892,11 +898,12 @@
     function nameParameters(js, deep) {
         var js = js || "",
             count = 0,
-            named = false,
+            named = 0,
             args = [],
             hash = {},
             resting = "",
-            rest = "",
+            body = "",
+            neck = "", // function `{`, => `(`, => ``
             comment = "", /*//*/
             bracket = 0, // []
             brace = 0, // {}
@@ -941,15 +948,10 @@
                 continue;
             }
 
-            if (named === true) {
-
-                if (char === "{") {
-
-                    rest = js.slice(i+1);
-                    break;
-                }
+            if (named && char !== "=" && char !== ">" && !whitespace.test(char))
+                break;
+            if (named)
                 continue;
-            }
 
             if (def) { // Default value
 
@@ -977,11 +979,14 @@
                     def = false;
                 }
                 continue;
-            
-            } else if (char === "=") {
-                def = true;
 
-                if (arg !== "" && hash.hasOwnProperty(arg) === false) {
+            } else if (char === "=") {
+                if (js.charAt(i + 1) === ">")
+                    named = true;
+                else
+                    def = true;
+
+                if (arg !== "" && !hash.hasOwnProperty(arg)) {
                     count = args.push(arg);
                     hash[arg] = resting;
                 }
@@ -999,7 +1004,7 @@
 
             } else if (paren === 1 && char === ")") {
 
-                if (arg !== "" && hash.hasOwnProperty(arg) === false) {
+                if (arg !== "" && !hash.hasOwnProperty(arg)) {
                     count = args.push(arg);
                     hash[arg] = resting;
                 }
@@ -1033,33 +1038,40 @@
                 brace--;
                 continue;
             }
-            if (brace > 0 && char !== "," && colon === false)
+            if (brace > 0 && char !== "," && !colon)
                 continue;
 
             if (char === ",") {
-                if (arg !== "" && hash.hasOwnProperty(arg) === false) {
+                if (arg !== "" && !hash.hasOwnProperty(arg)) {
                     count = args.push(arg);
                     hash[arg] = resting;
                 }
                 arg = resting = "";
                 continue;
             }
-
             if (whitespace.test(char) || char === ")")
                 continue;
 
-            if (char === ".") {
+            if (char !== ".")
+                arg += char;
+            else
                 resting = "...";
-                continue;
-            }
-
-            arg += char;
         }
+
+        if (char === "{" || char === "(")
+            neck = char;
+        else
+            i--;
+
+        if (deep === true)
+            body = js.slice(i + 1);
+
         return {
             list: args,
             count: count,
             hash: hash,
-            rest: rest
+            neck: neck,
+            body: body
         };
     }
     var whitespace = /(\s)|(\r)/;
@@ -1092,24 +1104,29 @@
         return o;
     }
 
-    function close(name, body, outer, inner, inner_hash) {
-        var args = "",
+    function close(name, part, outer) {
+        var outer = outer || [],
+            inner = part.list || [],
+            inner_hash = part.hash || {},
+            body = part.body || "",
+            neck = part.neck || "",
             inner_length = inner.length,
-            last = inner[inner_length-1];
-        if (inner_hash[last] !== "...")
-            args = inner.join(", ");
-        else
-            for(var i=0;i<inner_length;i++) {
-                if (i === inner_length - 1)
-                    args = args + "..." + last;
-                else
-                    args = args + inner[i] + ", ";
-            };
+            last = inner[inner_length - 1],
+            args = "";
 
-        var pre = "'use strict';\n"+
-            "return (function "+name+"("+args+") {\n\n    "+
-            "var ";
-        for(var i=0,a=0,len=outer.length;i<len;i++) {
+        for(var i = 0; i < inner_length - 1; i++)
+            args = args + inner[i] + ", ";
+
+        if (inner_length > 0)
+            args = args + (inner_hash[last] === "..." ? "..." : "") + last;
+
+        var outer_length = outer.length,
+            pre = "'use strict';\n"+
+            "return (function "+name+"("+args+") {\n\n    "+(
+            
+            outer_length > 0 ? "var " : "");
+
+        for(var i=0,a=0;i<outer_length;i++) {
 
             var outer_name = outer[i];
 
@@ -1123,7 +1140,19 @@
 
             a++;
         }
-        return (new Function(pre + ";\n\n" + body + ");"))();
+        if (outer_length > 0)
+            pre = pre + ";\n\n";
+
+        if (neck !== "{")
+            body = "return (" + body;
+
+        if (neck === "")
+            body = body + ")";
+
+        if (neck !== "{")
+            body = body + "}";
+
+        return (new Function(pre + body + ");"))();
     }
     function copy(arr) {
         var len = arr.length,

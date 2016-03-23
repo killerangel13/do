@@ -20,19 +20,32 @@
         if (typeof o !== "function")
             return deem(o, one, two, three, context);
 
-        var enclosure = nameParameters(o.toString(), true);
+        var no_context = (typeof context !== "object" || // Has context been cloned?
+
+                typeof context.enclosure !== "object"),
+
+            enclosure = no_context ?
+
+                nameParameters(o.toString(), true):
+            
+                context.enclosure;
 
         o = enclosure.count > 0 ?
 
-            close("dø", enclosure).call(context = {
+            close("dø", enclosure).call(context = (no_context ? {
                 alone: true,
+                function: o,
                 enclosure: enclosure
-            }):
 
-            o.call(context = {
+            } : context)):
+
+            o.call(context = (no_context ? {
                 invoke: true,
+                function: o,
                 enclosure: enclosure
-            });
+
+            } : context));
+
         return deem(o, one, two, three, context);
     }
 
@@ -188,7 +201,7 @@
             this.finish = bind(this.finish, this);
             this.die = bind(this.die, this);
 
-            if (context.alone === true)
+            if (context.enclosure !== undefined)
                 this["bind closure"](context);
 
             this.dø = bind(this.dø, this);
@@ -196,7 +209,7 @@
             return context;
         },
         "bind closure": function(context) {
-            var enclosure = context.enclosure,
+            var enclosure = this.enclosure = context.enclosure,
                 alone = context.alone = enclosure.count > 0;
             if (alone)
                 this["stand alone"](enclosure);
@@ -207,7 +220,6 @@
             this["set active"] = this["set active alone"];
             this["rests alone"] = enclosure.hash[enclosure.list[enclosure.count-1]] === "...";
             this.dø = this["dø alone"];
-            this.enclosure = enclosure;
             this.enclosing = enclosure.list;
             this.enclosed = [];
         },
@@ -307,6 +319,11 @@
             return this.dø;
         },
         refresh: function() {
+            if (this.alone !== true && 
+                this["call context"].function !== undefined)
+                
+                API(this["call context"], this);
+
             API(this.contents, this, true);
             API(this.dø, this);
         },
@@ -325,11 +342,15 @@
                 .call(this, i, did, died);
         },
         clone: function() {
-            var args = this.arguments;
-            return new DoFunctionArray(args[0], args[1], this.next, {
-                clone: true,
+            var func = this.alone !== true && this["call context"].function,
+                args = this.arguments;
+
+            return dø((func || args[0]), args[1], this.next, undefined, {
+
+                function: func || undefined,
                 enclosure: this.enclosure,
-                alone: this.alone
+                alone: this.alone,
+                clone: true
             });
         },
         "stand alone": function(args) {
@@ -372,12 +393,15 @@
             doing[i] = this.iterate.call(this, el, i, did, died);
         },
         clone: function() {
-            var args = this.arguments;
+            var func = this.alone !== true && this["call context"].function,
+                args = this.arguments;
 
-            return new DoArray(args[0], this.iterate, args[1], this.next, {
-                clone: true,
+            return dø((func || args[0]), this.iterate, args[1], this.next, {
+
+                function: func || undefined,
                 enclosure: this.enclosure,
-                alone: this.alone
+                alone: this.alone,
+                clone: true
             });
         },
         "stand alone": function(args) {
@@ -392,507 +416,517 @@
         }
     });
 
-    var DoFunctionObject = (function() { // Object with Functions
+    var DoFunctionObject = extend(Do, { // Object with Functions
 
-        var dø = extend(Do, {
-            construct: function(o, die, next, context) {
-                this.cued = false;
-                this.next = this.arguments[2] || this.arguments.splice(1,1,function(){}).pop();
-                this.done = {};
-                this["some died"] = false;
-                this.dead = {};
-                this.doing = {};
-                this.count = 0;
-                this.did = {};
-                this.died = {};
-                this.counts = [];
-                this.contents = {};
-                this.keys = {
-                    o: Object.keys(o),
-                    did: []
-                };
-                var context = this.bind(context),
-                    alone = this.alone,
-                    ops = this.ops = {},
-                    todo = this.todo = copy(this.keys.o),
-                    total = this.total = this.countdown = todo.length,
-                    to_cue = this["to cue"] = {},
-                    cached = this.cached = Boolean(context.orders || context.parts),
-                    orders = this.orders = context.orders || {},
-                    parts = this.parts = context.parts || {},
-                    primes = this.primes = {},
-                    cueing = this.cueing = {count: 0, _:{}},
-                    rests = this.rests = false,
-                    resting = {},
+        construct: function(o, die, next, context) {
+            this.cued = false;
+            this.next = this.arguments[2] || this.arguments.splice(1,1,function(){}).pop();
+            this.done = {};
+            this["some died"] = false;
+            this.dead = {};
+            this.doing = {};
+            this.count = 0;
+            this.did = {};
+            this.died = {};
+            this.counts = [];
+            this.contents = {};
+            this.keys = {
+                o: Object.keys(o),
+                did: []
+            };
+            var context = this.bind(context),
+                alone = this.alone,
+                ops = this.ops = {},
+                todo = this.todo = copy(this.keys.o),
+                total = this.total = this.countdown = todo.length,
+                to_cue = this["to cue"] = {},
+                cached = this.cached = Boolean(context.orders || context.parts),
+                orders = this.orders = context.orders || {},
+                parts = this.parts = context.parts || {},
+                primes = this.primes = {},
+                cueing = this.cueing = {count: 0, _:{}},
+                rests = this.rests = false,
+                resting = {},
 
-                    keys = this.keys.o;
-                for(var i = 0; i < total; i++) {
-                    var k = keys[i],
-                    func = o[k],
+                keys = this.keys.o;
+            for(var i = 0; i < total; i++) {
+                var k = keys[i],
+                func = o[k],
 
-                    part = parts[k] = parts[k] || nameParameters(func.toString(), alone),
+                part = parts[k] = parts[k] || nameParameters(func.toString(), alone),
 
-                    args = copy(part.list),
+                args = copy(part.list),
 
-                    last = part.count - 1,
-                    count = last,
-                    // (argument, ...rest) => {
-                    rest = 0 <= last && part.hash[args[last]] === "..." ? !!args.pop() : false;
+                last = part.count - 1,
+                count = last,
+                // (argument, ...rest) => {
+                rest = 0 <= last && part.hash[args[last]] === "..." ? !!args.pop() : false;
 
-                    rests = rests || rest;
+                rests = rests || rest;
 
-                    var op = this["add op"](k, func, args);
+                var op = this["add op"](k, func, args);
 
-                    if (rest === false)
-                        count++;
-                    else
-                        op.rests = count;
+                if (rest === false)
+                    count++;
+                else
+                    op.rests = count;
 
-                    if (rest === true && count === 0)
-                        resting[k] = op;
+                if (rest === true && count === 0)
+                    resting[k] = op;
 
-                    if (rest === false && count === 0)
-                        primes[k] = op;
+                if (rest === false && count === 0)
+                    primes[k] = op;
 
-                    else for(var a = 0; a < count; a++)
-                            this.does(args[a]);
-                        ;
-                    this.does(k);
+                else for(var a = 0; a < count; a++)
+                        this.does(args[a]);
+                    ;
+                this.does(k);
 
-                    if (cached === false)
-                        intersect(args, keys, orders);
-                }
-                this.rests = rests;
+                if (cached === false)
+                    intersect(args, keys, orders);
+            }
+            this.rests = rests;
 
-                if (rests)
-                    this.record = [];
+            if (rests)
+                this.record = [];
 
-                for(var k in resting)
-                    resting[k].arguments.need(except(k, this.keys.o));
+            for(var k in resting)
+                resting[k].arguments.need(except(k, this.keys.o));
 
-                for(var k in o)
-                    to_cue[k] = copy(ops[k].arguments["get keys"]());
+            for(var k in o)
+                to_cue[k] = copy(ops[k].arguments["get keys"]());
 
-                this.proxy();
+            this.proxy();
 
-                this.refresh();
+            this.refresh();
 
-                return context.invoke !== true ?
-                    this.dø:
-                    this.dø();
-            },
-            refresh: !ES6Proxy ? function() {
-                var ops = this.ops,
-                    context = this.context,
-                    done = this.done,
-                    doing = this.doing,
-                    dead = this.dead;
-                for(var k in ops) {
-                    var that = ops[k].this;
-                    that.done = done;
-                    that.doing = doing;
-                    that.dead = dead;
-                    that.context = context;
-                }
-                API(this.contents, this, true);
-                API(this.dø, this);
-            }:
-            function() {
-                API(this.contents, this, true);
-                API(this.dø, this);
-            },
-            proxy: !ES6Proxy ? function() {
-                var ops = this.ops,
-                    todo = this.todo,
-                    each = this["each proxy"];
-                for(var i=0,len=todo.length;i<len;i++) {
-                    var k = todo[i];
-                    each.call(this, ops[k], k, i);
-                }
-                var did = this.did,
-                    keys = this.keys.did;
-                for(var i=0,len=keys.length;i<len;i++) {
-                    var k = keys[i];
-                    did[k] = bind1(did[k], this);
-                }
-                for(var i=0,len=todo.length;i<len;i++) {
-                    var k = todo[i];
-                    each.call(this, ops[k], k, i);
-                }
-            }:
-            function() {
-                var ops = this.ops,
-                    todo = this.todo,
-                    each = this["each proxy"];
-                for(var i=0,len=todo.length;i<len;i++) {
-                    var k = todo[i];
-                    each.call(this, ops[k], k, i);
-                }
-                var did = this.did,
-                    keys = this.keys.did;
-                for(var i=0,len=keys.length;i<len;i++) {
-                    var k = keys[i];
-                    if (ops[k] === undefined)
-                        did[k] = bind1(did[k], this);
-                }
-            },
-            "each proxy": !ES6Proxy ? function(op, k, i) {
-                var that = op.this = op.this || API({
-                        i: i
-                    }, this),
-                    keys = this.keys.did,
-                    does = that.did,
-                    did = this.did;
-                if (did === does)
-                    return that.did = defineObject([[
-                        k, bind1(did[k], that)
-                    ]]);
-                for(var j=0,len=keys.length;j<len;j++) {
-                    var jk = keys[j];
+            return context.invoke !== true ?
+                this.dø:
+                this.dø();
+        },
+        refresh: !ES6Proxy ? function() {
+            var ops = this.ops,
+                context = this.context,
+                done = this.done,
+                doing = this.doing,
+                dead = this.dead;
+            for(var k in ops) {
+                var that = ops[k].this;
+                that.done = done;
+                that.doing = doing;
+                that.dead = dead;
+                that.context = context;
+            }
+            if (this.alone !== true &&
+                this["call context"].function !== undefined)
+                
+                API(this["call context"], this);
 
-                    if (k !== jk)
-                        does[jk] = did[jk];
-                }
-            }:
-            function(op, k, i) {
-                var did = this.did,
-                    that = op.this = new Proxy(this, {
-                    get: function(o, k) {
-                        return k === "i" ? i:
-                            k !== "did" ?
-                            o[k]:
-                            does;
-                    },
-                    set: function(o, k, val) {
-                        if (k === "i")
-                            i = val;
-                        else
-                            o[k] = val;
+            API(this.contents, this, true);
+            API(this.dø, this);
+        }:
+        function() {
+            if (this.alone !== true && 
+                this["call context"].function !== undefined)
 
-                        return true;
-                    }
-                }),
-                i = i,
-                does = new Proxy(this.did, {
-                    get: function(o, jk) {
-                        return k !== jk ?
-                            o[jk]:
-                            bound;
-                    }
-                }),
-                bound = bind1(did[k], that);
+                API(this["call context"], this);
 
+            API(this.contents, this, true);
+            API(this.dø, this);
+        },
+        proxy: !ES6Proxy ? function() {
+            var ops = this.ops,
+                todo = this.todo,
+                each = this["each proxy"];
+            for(var i=0,len=todo.length;i<len;i++) {
+                var k = todo[i];
+                each.call(this, ops[k], k, i);
+            }
+            var did = this.did,
+                keys = this.keys.did;
+            for(var i=0,len=keys.length;i<len;i++) {
+                var k = keys[i];
                 did[k] = bind1(did[k], this);
-            },
-            does: function(k) {
-                var did = this.did;
-                if (did[k] !== undefined)
-                    return;
-                var that = this;
+            }
+            for(var i=0,len=todo.length;i<len;i++) {
+                var k = todo[i];
+                each.call(this, ops[k], k, i);
+            }
+        }:
+        function() {
+            var ops = this.ops,
+                todo = this.todo,
+                each = this["each proxy"];
+            for(var i=0,len=todo.length;i<len;i++) {
+                var k = todo[i];
+                each.call(this, ops[k], k, i);
+            }
+            var did = this.did,
+                keys = this.keys.did;
+            for(var i=0,len=keys.length;i<len;i++) {
+                var k = keys[i];
+                if (ops[k] === undefined)
+                    did[k] = bind1(did[k], this);
+            }
+        },
+        "each proxy": !ES6Proxy ? function(op, k, i) {
+            var that = op.this = op.this || API({
+                    i: i
+                }, this),
+                keys = this.keys.did,
+                does = that.did,
+                did = this.did;
+            if (did === does)
+                return that.did = defineObject([[
+                    k, bind1(did[k], that)
+                ]]);
+            for(var j=0,len=keys.length;j<len;j++) {
+                var jk = keys[j];
 
-                did[k] = function(val) {
-                    that.do.call(this, that, k, val);
-                    return this.did;
-                };
-                this.dies(k);
+                if (k !== jk)
+                    does[jk] = did[jk];
+            }
+        }:
+        function(op, k, i) {
+            var did = this.did,
+                that = op.this = new Proxy(this, {
+                get: function(o, k) {
+                    return k === "i" ? i:
+                        k !== "did" ?
+                        o[k]:
+                        does;
+                },
+                set: function(o, k, val) {
+                    if (k === "i")
+                        i = val;
+                    else
+                        o[k] = val;
 
-                this.keys.did.push(k);
-            },
-            dies: function(k) {
-                var died = this.died;
-                if (died[k] !== undefined)
-                    return;
-                var that = this;
-                died[k] = function(val) {
-                    that.do.call(that["died without context"], that, k, val);
-                    return died;
-                };
-            },
-            "died without context": "died",
-
-            store: function(that, k, val) {
-                var op = this.ops[k],
-                    self = op === undefined ? undefined : op.this;
-
-                if (self !== undefined && self.i === -1)
-                    return false;
-
-                var died = that == "died";
-
-                this[!died ? "done" : "dead"][k] = val;
-
-                if (died === true)
-                    this["some died"] = true;
-
-                else if (this.rests === true)
-                    this.record.push(defineObject([
-                        [k, val]
-                    ]));
-                var die = this.doing[k];
-
-                if (that !== self && typeof die === "function")
-                    die();
-
-                return true;
-            },
-            propagate: function(countdown, k, val, i) {
-                var count = this.count;
-
-                if (this.trigger(this.todo[i], k, val) !== true)
-                    return countdown;
-
-                var count_now = this.count;
-
-                if (count_now === count)
-                    return countdown;
-
-                countdown -= count_now - count;
-
-                if (countdown <= i)
-                    return countdown;
-
-                var counts = this.counts;
-
-                do if (counts[count] <= i)
-                    countdown = this.propagate(
-                        countdown, k, val, counts[count]
-                    );
-                while (countdown > i && count_now > (count += 1));
-
-                return countdown;
-            },
-            "count down": function(k) {
-                var countdown = this.countdown -= 1;
-
-                if (countdown <= 0)
-                    return this.finish(false);
-
-                var ops = this.ops,
-                    self = ops[k].this,
-
-                    I = self.i; self.i = -1;
-
-                var todo = this.todo,
-                    end = todo.pop();
-
-                if (end !== k)
-                    ops[(todo[I] = end)].this.i = I;
-
-                this.count = this.counts.push(I);
-
-                return countdown;
-            },
-            do: function(dø, k, val) {
-                if (dø.active === false ||
-
-                    dø.store(this, k, val) === false)
-                    return;
-
-                var countdown = !dø.ops.hasOwnProperty(k) ?
-                    dø.countdown:
-                    dø["count down"](k);
-
-                if (this == "died" || countdown === 0)
-                    return;
-
-                var propagate = dø.propagate;
-
-                for(var i = 0; i < countdown; i++)
-                    countdown = propagate.call(dø,
-                        countdown, k, val, i
-                    );
-            },
-            trigger: function(K, k, val) {
-                var op = this.ops[K],
-                    args = op.arguments;
-
-                if (args["get isset"]() === true ||
-                    
-                    args.set(k, val) === undefined ||
-
-                    args["get isset"]() === false)
-
-                    return false;
-
-                if (op.rests === 0)
-                    args.replace(this.record);
-
-                else if (op.rests !== undefined)
-                    args.replace(append(args["get defined"](), this.record));
-
-                this.each.call(this, K, op, args);
-
-                return true;
-            },
-            "add op": function(k, func, args) {
-                var op = this.ops[k] = {
-                    arguments: new Net(args),
-                    function: func
-                };
-                return op;
-            },
-            "cue primes": function() {
-                var primes = this.primes,
-                    each = this.each;
-
-                for(var k in primes) {
-                    var op = primes[k];
-                    if (op.this.i > -1)
-                        // if not done
-                        each.call(this, k, op);
+                    return true;
                 }
-            },
-            cue: function() {
-                if (this.total === 0)
-                    return;
+            }),
+            i = i,
+            does = new Proxy(this.did, {
+                get: function(o, jk) {
+                    return k !== jk ?
+                        o[jk]:
+                        bound;
+                }
+            }),
+            bound = bind1(did[k], that);
 
-                this["set active"](true);
+            did[k] = bind1(did[k], this);
+        },
+        does: function(k) {
+            var did = this.did;
+            if (did[k] !== undefined)
+                return;
+            var that = this;
 
-                this["cue primes"]();
+            did[k] = function(val) {
+                that.do.call(this, that, k, val);
+                return this.did;
+            };
+            this.dies(k);
 
+            this.keys.did.push(k);
+        },
+        dies: function(k) {
+            var died = this.died;
+            if (died[k] !== undefined)
+                return;
+            var that = this;
+            died[k] = function(val) {
+                that.do.call(that["died without context"], that, k, val);
+                return died;
+            };
+        },
+        "died without context": "died",
+
+        store: function(that, k, val) {
+            var op = this.ops[k],
+                self = op === undefined ? undefined : op.this;
+
+            if (self !== undefined && self.i === -1)
+                return false;
+
+            var died = that == "died";
+
+            this[!died ? "done" : "dead"][k] = val;
+
+            if (died === true)
+                this["some died"] = true;
+
+            else if (this.rests === true)
+                this.record.push(defineObject([
+                    [k, val]
+                ]));
+            var die = this.doing[k];
+
+            if (that !== self && typeof die === "function")
+                die();
+
+            return true;
+        },
+        propagate: function(countdown, k, val, i) {
+            var count = this.count;
+
+            if (this.trigger(this.todo[i], k, val) !== true)
+                return countdown;
+
+            var count_now = this.count;
+
+            if (count_now === count)
+                return countdown;
+
+            countdown -= count_now - count;
+
+            if (countdown <= i)
+                return countdown;
+
+            var counts = this.counts;
+
+            do if (counts[count] <= i)
+                countdown = this.propagate(
+                    countdown, k, val, counts[count]
+                );
+            while (countdown > i && count_now > (count += 1));
+
+            return countdown;
+        },
+        "count down": function(k) {
+            var countdown = this.countdown -= 1;
+
+            if (countdown <= 0)
+                return this.finish(false);
+
+            var ops = this.ops,
+                self = ops[k].this,
+
+                I = self.i; self.i = -1;
+
+            var todo = this.todo,
+                end = todo.pop();
+
+            if (end !== k)
+                ops[(todo[I] = end)].this.i = I;
+
+            this.count = this.counts.push(I);
+
+            return countdown;
+        },
+        do: function(dø, k, val) {
+            if (dø.active === false ||
+
+                dø.store(this, k, val) === false)
+                return;
+
+            var countdown = !dø.ops.hasOwnProperty(k) ?
+                dø.countdown:
+                dø["count down"](k);
+
+            if (this == "died" || countdown === 0)
+                return;
+
+            var propagate = dø.propagate;
+
+            for(var i = 0; i < countdown; i++)
+                countdown = propagate.call(dø,
+                    countdown, k, val, i
+                );
+        },
+        trigger: function(K, k, val) {
+            var op = this.ops[K],
+                args = op.arguments;
+
+            if (args["get isset"]() === true ||
+                
+                args.set(k, val) === undefined ||
+
+                args["get isset"]() === false)
+
+                return false;
+
+            if (op.rests === 0)
+                args.replace(this.record);
+
+            else if (op.rests !== undefined)
+                args.replace(append(args["get defined"](), this.record));
+
+            this.each.call(this, K, op, args);
+
+            return true;
+        },
+        "add op": function(k, func, args) {
+            var op = this.ops[k] = {
+                arguments: new Net(args),
+                function: func
+            };
+            return op;
+        },
+        "cue primes": function() {
+            var primes = this.primes,
+                each = this.each;
+
+            for(var k in primes) {
+                var op = primes[k];
+                if (op.this.i > -1)
+                    // if not done
+                    each.call(this, k, op);
+            }
+        },
+        cue: function() {
+            if (this.total === 0)
+                return;
+
+            this["set active"](true);
+
+            this["cue primes"]();
+
+            if((this.cued = this.cued || !this.active))
+                return;
+
+            this["cue primary"]();
+        },
+        "cue primary": function() {
+            var ops = this.ops,
+                to_cue = this["to cue"],
+                cueing = this.cueing._,
+                orders = this.orders,
+                count = 0,
+                oops = [],
+                each = this.each;
+
+            for(var k in to_cue) {
+                if (cueing[k] !== undefined)
+                    continue;
+                var args = ops[k].arguments["get keys"](),
+                    in_ops = 0;
+                for(var i=0,all=args.length;i<all;i++) {
+                    if (ops[args[i]] !== undefined)
+                        in_ops++;
+                }
+                if (all === in_ops || 0 === in_ops)
+                    count = oops.push({
+
+                        order: orders[k] || 0,
+                        k: k
+                    });
+            }
+            var primary = oops.sort(function(a, b) {
+                return a.order === b.order ? 0:
+                    a.order < b.order ? 1 : -1;
+            });
+            for(var i = 0; i < count; i++) {
+                var k = primary[i].k,
+                    op = ops[k];
+
+                if (op.this.i > -1 && // not done
+                
+                    op.arguments["get isset"]() === false)
+                    // not begun
+
+                    each.call(this, k, op, op.rests === undefined ? undefined:
+
+                        append(new Array(op.rests), this.record)
+                    );
                 if((this.cued = this.cued || !this.active))
                     return;
-
-                this["cue primary"]();
-            },
-            "cue primary": function() {
-                var ops = this.ops,
-                    to_cue = this["to cue"],
-                    cueing = this.cueing._,
-                    orders = this.orders,
-                    count = 0,
-                    oops = [],
-                    each = this.each;
-
-                for(var k in to_cue) {
-                    if (cueing[k] !== undefined)
-                        continue;
-                    var args = ops[k].arguments["get keys"](),
-                        in_ops = 0;
-                    for(var i=0,all=args.length;i<all;i++) {
-                        if (ops[args[i]] !== undefined)
-                            in_ops++;
-                    }
-                    if (all === in_ops || 0 === in_ops)
-                        count = oops.push({
-
-                            order: orders[k] || 0,
-                            k: k
-                        });
-                }
-                var primary = oops.sort(function(a, b) {
-                    return a.order === b.order ? 0:
-                        a.order < b.order ? 1 : -1;
-                });
-                for(var i = 0; i < count; i++) {
-                    var k = primary[i].k,
-                        op = ops[k];
-
-                    if (op.this.i > -1 && // not done
-                    
-                        op.arguments["get isset"]() === false)
-                        // not begun
-
-                        each.call(this, k, op, op.rests === undefined ? undefined:
-
-                            append(new Array(op.rests), this.record)
-                        );
-                    if((this.cued = this.cued || !this.active))
-                        return;
-                }
-            },
-            dø: function(context) {
-                if (this.cueing.count !== 0)
-                    return this.clone().apply(null, arguments);
-
-                this.context = context;
-
-                this.refresh();
-
-                this.cue();
-
-                return this.dø;
-            },
-            "de-cue": function(K) {
-                var de_cue = this["de-cue"],
-                    to_cue = this["to cue"],
-                    cueing = this.cueing;
-
-                for(var k in to_cue) {
-                    if (cueing._[k] !== undefined)
-                        continue;
-                    var args = to_cue[k],
-                        i = args.indexOf(K),
-                        count = args.length;
-                    if (i > -1 && 1 < count-- && i !== count)
-                        args[i] = args.pop();
-                    else if (i > -1)
-                        args.pop();
-                    if (count !== 0)
-                        continue;
-                    cueing._[k] = true;
-                    cueing.count++;
-
-                    de_cue.call(this, k);
-                }
-                if (this.total === cueing.count)
-                    this.cued = true;
-            },
-            each: function(k, op) {
-                if (this.cued === false)
-                    this["de-cue"](k);
-
-                this.doing[k] = op.function.apply(op.this, op.arguments["get defined"]());
-            },
-            "add op alone": function(k, func, args) {
-
-                var part = this.parts[k],
-                    
-                    op = this.ops[k] = {
-                    arguments: new Net(args),
-
-                    function: this.cached !== true ?
-                        
-                        close(k, part, this.enclosing):
-
-                        this["call context"].functions[k]
-                };
-                return op;
-            },
-            "stand alone": function(args) {
-                this.super["stand alone"].call(this, args);
-
-                this["add op"] = this["add op alone"];
-            },
-            "dø alone": function() {
-                if (this.cueing.count !== 0)
-                    return this.clone().apply(null, arguments);
-
-                this.super["dø alone"].apply(this, arguments);
-
-                this.cue();
-
-                return this.dø;
-            },
-            clone: function() {
-                var ops = this.ops,
-                    args = this.arguments,
-                    functions = {};
-
-                for(var k in ops)
-                    functions[k] = ops[k].function;
-
-                return new dø(args[0], args[1], this.next, {
-                    alone: this.alone,
-                    parts: this.parts,
-                    orders: this.orders,
-                    functions: functions,
-                    enclosure: this.enclosure
-                });
             }
-        });
-        return dø;
-    })();
+        },
+        dø: function(context) {
+            if (this.cueing.count !== 0)
+                return this.clone().apply(null, arguments);
+
+            this.context = context;
+
+            this.refresh();
+
+            this.cue();
+
+            return this.dø;
+        },
+        "de-cue": function(K) {
+            var de_cue = this["de-cue"],
+                to_cue = this["to cue"],
+                cueing = this.cueing;
+
+            for(var k in to_cue) {
+                if (cueing._[k] !== undefined)
+                    continue;
+                var args = to_cue[k],
+                    i = args.indexOf(K),
+                    count = args.length;
+                if (i > -1 && 1 < count-- && i !== count)
+                    args[i] = args.pop();
+                else if (i > -1)
+                    args.pop();
+                if (count !== 0)
+                    continue;
+                cueing._[k] = true;
+                cueing.count++;
+
+                de_cue.call(this, k);
+            }
+            if (this.total === cueing.count)
+                this.cued = true;
+        },
+        each: function(k, op) {
+            if (this.cued === false)
+                this["de-cue"](k);
+
+            this.doing[k] = op.function.apply(op.this, op.arguments["get defined"]());
+        },
+        "add op alone": function(k, func, args) {
+
+            var part = this.parts[k],
+                
+                op = this.ops[k] = {
+                arguments: new Net(args),
+
+                function: this.cached !== true ?
+                    
+                    close(k, part, this.enclosing):
+
+                    this["call context"].functions[k]
+            };
+            return op;
+        },
+        "stand alone": function(args) {
+            this.super["stand alone"].call(this, args);
+
+            this["add op"] = this["add op alone"];
+        },
+        "dø alone": function() {
+            if (this.cueing.count !== 0)
+                return this.clone().apply(null, arguments);
+
+            this.super["dø alone"].apply(this, arguments);
+
+            this.cue();
+
+            return this.dø;
+        },
+        clone: function() {
+            var ops = this.ops,
+                func = this["call context"].function,
+                args = this.arguments,
+                functions = {};
+
+            for(var k in ops)
+                functions[k] = ops[k].function;
+
+            return dø((func || args[0]), args[1], this.next, undefined, {
+
+                function: func || undefined,
+                alone: this.alone,
+                parts: this.parts,
+                orders: this.orders,
+                functions: functions,
+                enclosure: this.enclosure
+            });
+        }
+    });
     
     function nameParameters(js, deep) {
         var js = js || "",

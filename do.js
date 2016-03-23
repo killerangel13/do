@@ -30,6 +30,7 @@
             }):
 
             o.call(context = {
+                invoke: true,
                 enclosure: enclosure
             });
         return deem(o, one, two, three, context);
@@ -199,8 +200,6 @@
                 alone = context.alone = enclosure.count > 0;
             if (alone)
                 this["stand alone"](enclosure);
-
-            context.function = true;
         },
         "stand alone": function(enclosure) {
             this.alone = true;
@@ -242,7 +241,7 @@
 
             this.init();
 
-            return context.alone === true || !context.function ?
+            return context.invoke !== true ?
                 this.dø:
                 this.dø();
         },
@@ -478,7 +477,7 @@
 
                 this.refresh();
 
-                return context.alone === true || !context.function ?
+                return context.invoke !== true ?
                     this.dø:
                     this.dø();
             },
@@ -898,7 +897,7 @@
     function nameParameters(js, deep) {
         var js = js || "",
             count = 0,
-            named = 0,
+            named = false,
             args = [],
             hash = {},
             resting = "",

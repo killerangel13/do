@@ -931,10 +931,18 @@
     function nameParameters(js, deep) {
         var js = js || "",
             count = 0,
+            names = [],
             named = false,
-            args = [],
+            name = "",
             hash = {},
             resting = "",
+            add = function() {
+                if (name !== "" && !hash.hasOwnProperty(name)) {
+                    count = names.push(name);
+                    hash[name] = resting;
+                }
+                name = resting = "";
+            },
             body = "",
             neck = "", // function `{`, => `(`, => ``
             comment = "", /*//*/
@@ -944,7 +952,6 @@
             quote = "",
             def,
             colon = def = false,
-            arg = "",
             char = "",
             prev = "";
         for(var i=0,len=js.length;i<len;i++) {
@@ -1019,11 +1026,8 @@
                 else
                     def = true;
 
-                if (arg !== "" && !hash.hasOwnProperty(arg)) {
-                    count = args.push(arg);
-                    hash[arg] = resting;
-                }
-                arg = resting = "";
+                add();
+
                 continue;
 
             } else if (char === "[" || char === "]")
@@ -1031,29 +1035,25 @@
 
             // Parens
             if (char === "(") {
+
+                if (paren === 0 && name.slice(-8) === "function")
+                    name = "";
+
                 paren++;
 
                 continue;
 
             } else if (paren === 1 && char === ")") {
 
-                if (arg !== "" && !hash.hasOwnProperty(arg)) {
-                    count = args.push(arg);
-                    hash[arg] = resting;
-                }
+                add();
 
                 if (deep !== true)
                     break;
-
-                arg = resting = "";
 
                 named = true;
                 paren--;
                 continue;
             }
-
-            if (paren === 0)
-                continue;
 
             // Destructured
             if (char === "," || char === "{")
@@ -1075,18 +1075,14 @@
                 continue;
 
             if (char === ",") {
-                if (arg !== "" && !hash.hasOwnProperty(arg)) {
-                    count = args.push(arg);
-                    hash[arg] = resting;
-                }
-                arg = resting = "";
+                add();
                 continue;
             }
             if (whitespace.test(char) || char === ")")
                 continue;
 
             if (char !== ".")
-                arg += char;
+                name += char;
             else
                 resting = "...";
         }
@@ -1100,7 +1096,7 @@
             body = js.slice(i + 1);
 
         return {
-            list: args,
+            list: names,
             count: count,
             hash: hash,
             neck: neck,

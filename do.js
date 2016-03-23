@@ -1,5 +1,5 @@
 /*
- * # dø - 1.0.8
+ * # dø - 1.0.9
  * http://alt-o.net/
  *
  * Copyright 2016 Contributors

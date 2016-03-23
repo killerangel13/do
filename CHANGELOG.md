@@ -17,3 +17,7 @@ Take a context argument - feature
 __1.0.7__
 
 Use arrow functions in an enclosure - bug
+
+__1.0.8__
+
+Self-invoking not self-invoking - bug

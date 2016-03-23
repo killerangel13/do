@@ -13,3 +13,7 @@ Carry functions, orders and parts for isolates - optimization
 __1.0.5__
 
 Take a context argument - feature
+
+__1.0.7__
+
+Use arrow functions in an enclosure - bug

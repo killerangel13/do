@@ -1,5 +1,5 @@
 /*
- * # dø - 1.0.6
+ * # dø - 1.0.7
  * http://alt-o.net/
  *
  * Copyright 2016 Contributors
@@ -128,7 +128,7 @@
 
     function Do(one, two, three, four, five) {
         var args = this.arguments = [];
-        
+
         // inlined slice
         for(var i=0,len=arguments.length;i<len;i++)
             args.push(arguments[i]);

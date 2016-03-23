@@ -25,3 +25,7 @@ Self-invoking not self-invoking - bug
 __1.0.9__
 
 Cleaner cloning - optimization
+
+__1.0.10__
+
+Support single parameters for arrow functions without parens - feature

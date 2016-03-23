@@ -158,12 +158,11 @@
                 die.apply(null, arguments);
         },
         finish: function(active) {
-            var boolean = typeof active === "boolean";
-
-            if (boolean && this["some died"] === true)
+            if (active === false &&
+                this["some died"] === true)
                 return this.die();
 
-            if (boolean)
+            if (active === false)
                 this["set active"](active);
 
             if (this.active === true)

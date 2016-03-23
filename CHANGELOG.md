@@ -21,3 +21,7 @@ Use arrow functions in an enclosure - bug
 __1.0.8__
 
 Self-invoking not self-invoking - bug
+
+__1.0.9__
+
+Cleaner cloning - optimization

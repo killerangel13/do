@@ -1,5 +1,5 @@
 Dø, or do not.
 
-dø is a tiny architecture for executing command chains.
+Dø is an architecture from natural language principles.
 
 Documentation, tests, and downloads at [http://dø.net](http://xn--d-5ga.net). 

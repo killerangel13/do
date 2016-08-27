@@ -1,5 +1,5 @@
 /*
- * # dø - 1.1.5
+ * # dø - 1.1.6
  * http://alt-o.net/
  *
  * Copyright 2016 Contributors
@@ -72,8 +72,7 @@
             dø === (new Proxy({},{ get: function(){ return dø }}))[Math.random()]
         );
     })();
-
-    dø.Proxy = false; // To enable Proxy set dø.Proxy to true.
+    dø.Proxy = false; // Set to true or to a Proxy function to enable
 
     function Net(keys) {
         this.counts = [keys ? keys.length : 0, 0];
@@ -517,7 +516,9 @@
                 this.dø();
         },
         refresh: function() {
-            if(!dø.Proxy || !ES6Proxy)
+            if (dø.Proxy === false || (
+                dø.Proxy === true && !ES6Proxy
+            ))
                 this["refresh ops"]();
             
             this["refresh API"]();
@@ -549,7 +550,9 @@
             API(this.dø, this);
         },
         proxy: function() {
-            if(!dø.Proxy || !ES6Proxy)
+            if (dø.Proxy === false || (
+                dø.Proxy === true && !ES6Proxy
+            ))
                 this["assign this"]();
             else
                 this["proxy this"]();
@@ -608,8 +611,9 @@
             }
         },
         "proxy each": function(op, k, i) {
-            var did = this.did,
-                that = op.this = new Proxy(this, {
+            var proxy = typeof dø.Proxy !== "function"? Proxy: dø.Proxy,
+                did = this.did,
+                that = op.this = new proxy(this, {
                 get: function(o, k) {
                     return k === "i" ? i:
                         k !== "did" ?
@@ -626,7 +630,7 @@
                 }
             }),
             i = i,
-            does = new Proxy(this.did, {
+            does = new proxy(this.did, {
                 get: function(o, jk) {
                     return k !== jk ?
                         o[jk]:

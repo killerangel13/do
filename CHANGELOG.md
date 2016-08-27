@@ -36,6 +36,6 @@ Isolate optimization - call dø.opt() instead of dø() for isolate caching
 
 If some died but die is not called, pass this.dead to the error handler
 
-__1.1.5__
+__1.1.6__
 
-Set dø.Proxy to true to enable use of ES6 Proxy
+Set dø.Proxy to true or to a Proxy function to enable

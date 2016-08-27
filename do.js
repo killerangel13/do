@@ -1,5 +1,5 @@
 /*
- * # dø - 1.1.1
+ * # dø - 1.1.2
  * http://alt-o.net/
  *
  * Copyright 2016 Contributors
@@ -12,7 +12,7 @@
     "use strict";
 
     typeof exports === "object" && typeof module !== "undefined" ? module.exports = dø :
-    typeof define === "function" && define.amd ? define(dø) : global && (global.dø = dø);
+    typeof define === "function" && define.amd ? define(dø) : (global && (global.dø = dø));
 
     function dø(o, one, two, three, context, js) {
 

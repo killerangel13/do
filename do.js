@@ -1,5 +1,5 @@
 /*
- * # dø - 1.1.0
+ * # dø - 1.1.1
  * http://alt-o.net/
  *
  * Copyright 2016 Contributors
@@ -12,8 +12,7 @@
     "use strict";
 
     typeof exports === "object" && typeof module !== "undefined" ? module.exports = dø :
-    typeof define === "function" && define.amd ? define(dø) :
-    global.dø = dø;
+    typeof define === "function" && define.amd ? define(dø) : global && (global.dø = dø);
 
     function dø(o, one, two, three, context, js) {
 
@@ -24,29 +23,22 @@
 
                 typeof context.enclosure !== "object"),
 
-            enclosure = no_context ?
+            enclosure = !no_context ? context.enclosure:
 
-                nameParameters(js || o.toString(), true):
-            
-                context.enclosure;
+                nameParameters(typeof js === "string" ? js : o.toString(), true),
 
-        o = enclosure.count > 0 ?
+            alone = enclosure.count > 0,
 
-            close("dø", enclosure).call(context = (no_context ? {
-                alone: true,
+            o = !alone || !no_context ? o : close("dø", enclosure),
+
+            context = no_context ? {
                 function: o,
                 enclosure: enclosure
+            }: context;
 
-            } : context)):
+        if (no_context) context[alone ? "alone" : "invoke"] = true;
 
-            o.call(context = (no_context ? {
-                invoke: true,
-                function: o,
-                enclosure: enclosure
-
-            } : context));
-
-        return deem(o, one, two, three, context);
+        return deem(o.call(context), one, two, three, context);
     }
 
     var __cache__ = {};
@@ -55,10 +47,13 @@
             return dø(o, one, two, three);
 
         var js = o.toString(),
-            context = __cache__[js],
+            no_context = !__cache__.hasOwnProperty(js),
+            context = no_context ? undefined : __cache__[js],
+            o = no_context ? o : context.function,
+
             op = dø(o, one, two, three, context, js);
 
-        __cache__[js] = context || op['get context']();
+        if (no_context) __cache__[js] = op["get context"]();
 
         return op;
     };

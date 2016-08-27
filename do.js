@@ -1,5 +1,5 @@
 /*
- * # dø - 1.0.10
+ * # dø - 1.1.0
  * http://alt-o.net/
  *
  * Copyright 2016 Contributors
@@ -15,7 +15,7 @@
     typeof define === "function" && define.amd ? define(dø) :
     global.dø = dø;
 
-    function dø(o, one, two, three, context) {
+    function dø(o, one, two, three, context, js) {
 
         if (typeof o !== "function")
             return deem(o, one, two, three, context);
@@ -26,7 +26,7 @@
 
             enclosure = no_context ?
 
-                nameParameters(o.toString(), true):
+                nameParameters(js || o.toString(), true):
             
                 context.enclosure;
 
@@ -49,6 +49,19 @@
         return deem(o, one, two, three, context);
     }
 
+    var __cache__ = {};
+    dø.opt = function(o, one, two, three) {
+        if (typeof o !== 'function' || o.length === 0)
+            return dø(o, one, two, three);
+
+        var js = o.toString(),
+            context = __cache__[js],
+            op = dø(o, one, two, three, context, js);
+
+        __cache__[js] = context || op['get context']();
+
+        return op;
+    };
     function deem(o, one, two, three, context) {
         if (o !== undefined)
             return Array.isArray(o) ?
@@ -160,7 +173,7 @@
         finish: function(active) {
             if (active === false &&
                 this["some died"] === true)
-                return this.die();
+                return this.die(this.dead);
 
             if (active === false)
                 this["set active"](active);
@@ -192,6 +205,7 @@
         "set active": function(boolean) {
             return this.active = this.contents.active = boolean;
         },
+        "get context": function() {},
         bind: function(context) {
             var context = context || {};
 
@@ -202,6 +216,8 @@
 
             if (context.enclosure !== undefined)
                 this["bind closure"](context);
+
+            this["get context"] = this["get context"].bind(this);
 
             this.dø = bind(this.dø, this);
 
@@ -906,24 +922,26 @@
 
             return this.dø;
         },
-        clone: function() {
+        "get context": function() {
             var ops = this.ops,
-                func = this["call context"].function,
-                args = this.arguments,
                 functions = {};
 
             for(var k in ops)
                 functions[k] = ops[k].function;
 
-            return dø((func || args[0]), args[1], this.next, undefined, {
-
-                function: func || undefined,
+            return {
+                function: this["call context"].function || undefined,
                 alone: this.alone,
                 parts: this.parts,
                 orders: this.orders,
                 functions: functions,
                 enclosure: this.enclosure
-            });
+            };
+        },
+        clone: function() {
+            var args = this.arguments;
+
+            return dø((this["call context"].function || args[0]), args[1], this.next, undefined, this["get context"]());
         }
     });
     
@@ -1107,6 +1125,8 @@
     function API(o, context, contents) {
 
         o.context = context.context;
+
+        o['get context'] = context['get context'];
 
         if (contents === true)
             o.active = context.active;

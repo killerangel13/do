@@ -29,3 +29,9 @@ Cleaner cloning - optimization
 __1.0.10__
 
 Support single parameters for arrow functions without parens - feature
+
+__1.1.0__
+
+Isolate optimization - call dø.opt() instead of dø() for isolate caching
+
+If some died but die is not called, pass this.dead to the error handler

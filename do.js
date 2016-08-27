@@ -1,5 +1,5 @@
 /*
- * # dø - 1.1.2
+ * # dø - 1.1.5
  * http://alt-o.net/
  *
  * Copyright 2016 Contributors
@@ -72,6 +72,8 @@
             dø === (new Proxy({},{ get: function(){ return dø }}))[Math.random()]
         );
     })();
+
+    dø.Proxy = false; // To enable Proxy set dø.Proxy to true.
 
     function Net(keys) {
         this.counts = [keys ? keys.length : 0, 0];
@@ -514,8 +516,15 @@
                 this.dø:
                 this.dø();
         },
-        refresh: !ES6Proxy ? function() {
+        refresh: function() {
+            if(!dø.Proxy || !ES6Proxy)
+                this["refresh ops"]();
+            
+            this["refresh API"]();
+        },
+        "refresh ops": function() {
             var ops = this.ops,
+                enclosed = this.enclosed,
                 context = this.context,
                 done = this.done,
                 doing = this.doing,
@@ -526,16 +535,11 @@
                 that.doing = doing;
                 that.dead = dead;
                 that.context = context;
+                if (enclosed !== undefined)
+                    that.enclosed = enclosed;
             }
-            if (this.alone !== true &&
-                this["call context"].function !== undefined)
-                
-                API(this["call context"], this);
-
-            API(this.contents, this, true);
-            API(this.dø, this);
-        }:
-        function() {
+        },
+        "refresh API": function() {
             if (this.alone !== true && 
                 this["call context"].function !== undefined)
 
@@ -544,10 +548,16 @@
             API(this.contents, this, true);
             API(this.dø, this);
         },
-        proxy: !ES6Proxy ? function() {
+        proxy: function() {
+            if(!dø.Proxy || !ES6Proxy)
+                this["assign this"]();
+            else
+                this["proxy this"]();
+        },
+        "assign this": function() {
             var ops = this.ops,
                 todo = this.todo,
-                each = this["each proxy"];
+                each = this["assign each"];
             for(var i=0,len=todo.length;i<len;i++) {
                 var k = todo[i];
                 each.call(this, ops[k], k, i);
@@ -562,24 +572,8 @@
                 var k = todo[i];
                 each.call(this, ops[k], k, i);
             }
-        }:
-        function() {
-            var ops = this.ops,
-                todo = this.todo,
-                each = this["each proxy"];
-            for(var i=0,len=todo.length;i<len;i++) {
-                var k = todo[i];
-                each.call(this, ops[k], k, i);
-            }
-            var did = this.did,
-                keys = this.keys.did;
-            for(var i=0,len=keys.length;i<len;i++) {
-                var k = keys[i];
-                if (ops[k] === undefined)
-                    did[k] = bind1(did[k], this);
-            }
         },
-        "each proxy": !ES6Proxy ? function(op, k, i) {
+        "assign each": function(op, k, i) {
             var that = op.this = op.this || API({
                     i: i
                 }, this),
@@ -596,8 +590,24 @@
                 if (k !== jk)
                     does[jk] = did[jk];
             }
-        }:
-        function(op, k, i) {
+        },
+        "proxy this": function() {
+            var ops = this.ops,
+                todo = this.todo,
+                each = this["proxy each"];
+            for(var i=0,len=todo.length;i<len;i++) {
+                var k = todo[i];
+                each.call(this, ops[k], k, i);
+            }
+            var did = this.did,
+                keys = this.keys.did;
+            for(var i=0,len=keys.length;i<len;i++) {
+                var k = keys[i];
+                if (ops[k] === undefined)
+                    did[k] = bind1(did[k], this);
+            }
+        },
+        "proxy each": function(op, k, i) {
             var did = this.did,
                 that = op.this = new Proxy(this, {
                 get: function(o, k) {

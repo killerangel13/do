@@ -1,5 +1,5 @@
 /*
- * # dø - 1.1.6
+ * # dø - 1.1.8
  * http://alt-o.net/
  *
  * Copyright 2016 Contributors
@@ -955,7 +955,9 @@
     });
     
     function nameParameters(js, deep) {
-        var js = js || "",
+        // Remove anything between 'function' and '('
+        var js = !js? "": js.slice(0, 8) === 'function'?
+                ('function'+js.slice(js.indexOf('('))): js,
             count = 0,
             names = [],
             named = false,

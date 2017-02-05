@@ -1139,6 +1139,9 @@
 
         o['get context'] = context['get context'];
 
+        if (context.todo)
+            o.todo = context.todo
+        ;
         if (contents === true)
             o.active = context.active;
         else

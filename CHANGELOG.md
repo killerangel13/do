@@ -39,3 +39,7 @@ If some died but die is not called, pass this.dead to the error handler
 __1.1.6__
 
 Set dø.Proxy to true or to a Proxy function to enable
+
+__1.1.7__
+
+Expose this.todo for a ready list of remaining ops

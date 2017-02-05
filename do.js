@@ -1,5 +1,5 @@
 /*
- * # dø - 1.1.8
+ * # dø - 1.1.9
  * http://alt-o.net/
  *
  * Copyright 2016 Contributors
@@ -956,8 +956,8 @@
     
     function nameParameters(js, deep) {
         // Remove anything between 'function' and '('
-        var js = !js? "": js.slice(0, 8) === 'function'?
-                ('function'+js.slice(js.indexOf('('))): js,
+        var js = js || "",
+            lambda = js.trim().slice(0,8) !== 'function',
             count = 0,
             names = [],
             named = false,
@@ -1064,7 +1064,7 @@
             // Parens
             if (char === "(") {
 
-                if (paren === 0 && name.slice(-8) === "function")
+                if (paren === 0 && !lambda)
                     name = "";
 
                 paren++;

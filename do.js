@@ -1,8 +1,8 @@
 /*
- * # dø - 1.1.9
+ * # dø - 1.1.10
  * http://alt-o.net/
  *
- * Copyright 2016 Contributors
+ * Copyright 2017 Contributors
  * Released under the MIT license
  * http://opensource.org/licenses/MIT
  *
@@ -14,10 +14,10 @@
     typeof exports === "object" && typeof module !== "undefined" ? module.exports = dø :
     typeof define === "function" && define.amd ? define(dø) : (global && (global.dø = dø));
 
-    function dø(o, one, two, three, context, js) {
+    function dø(o, one, two, three, context, js, log) {
 
         if (typeof o !== "function")
-            return deem(o, one, two, three, context);
+            return deem(o, one, two, three, context, log);
 
         var no_context = (typeof context !== "object" || // Has context been cloned?
 
@@ -38,12 +38,12 @@
 
         if (no_context) context[alone ? "alone" : "invoke"] = true;
 
-        return deem(o.call(context), one, two, three, context);
+        return deem(o.call(context), one, two, three, context, log);
     }
 
     var __cache__ = {};
     dø.opt = function(o, one, two, three) {
-        if (typeof o !== 'function' || o.length === 0)
+        if (typeof o !== "function" || o.length === 0)
             return dø(o, one, two, three);
 
         var js = o.toString(),
@@ -57,13 +57,37 @@
 
         return op;
     };
-    function deem(o, one, two, three, context) {
+
+    dø.debug = function(o, one, two, three) {
+        return dø(o, one, two, three, undefined, undefined, true);
+    };
+
+    function stamp(pre, k, val) {
+        return (pre+"."+k+"("+(val === null? "null":
+            Array.isArray(val)? "Array":
+            typeof val == "number"? "Number":
+            typeof val == "boolean"? "Boolean":
+            typeof val == "string"? "String":
+            typeof val == "object"? "Object": ""
+        )+")");
+    }
+    function log(string) {
+        var timestamp = (new Date())
+            .toISOString()
+            .slice(2)
+            .replace("Z","")
+            .split("T"),
+        date = timestamp.shift().split("-");
+        date.push(date.shift());
+        console.log("\n("+date.join("-")+" "+timestamp+")   "+string+"\n");
+    }
+    function deem(o, one, two, three, context, log) {
         if (o !== undefined)
             return Array.isArray(o) ?
                 typeof o[0] !== "function" ?
-                        new DoArray (o, one, two, three, context):
-                new DoFunctionArray (o, one, two, context):
-                new DoFunctionObject(o, one, two, context);
+                        new DoArray (o, one, two, three, context, log):
+                new DoFunctionArray (o, one, two, context, undefined, log):
+                new DoFunctionObject(o, one, two, context, undefined, log);
     }
 
     var ES6Proxy = (function() { // Does VM work with Proxy?
@@ -149,12 +173,15 @@
         }
     };
 
-    function Do(one, two, three, four, five) {
+    function Do(one, two, three, four, five, log) {
         var args = this.arguments = [];
 
         // inlined slice
         for(var i=0,len=arguments.length;i<len;i++)
             args.push(arguments[i]);
+
+        if (log === true)
+            this.log();
 
         return this.construct.call(this, one, two, three, four, five);
     }
@@ -389,6 +416,16 @@
             Do.prototype["dø alone"].apply(this, arguments);
 
             return this.do.call(this);
+        },
+        log: function() {
+            var that = this;
+            ["did", "died"].forEach(function(pre) {
+                var method = that["it "+pre];
+                that["it "+pre] = function(i, val) {
+                    method.apply(this, arguments);
+                    log(stamp(pre, i, val));
+                };
+            });
         }
     });
 
@@ -951,13 +988,23 @@
             var args = this.arguments;
 
             return dø((this["call context"].function || args[0]), args[1], this.next, undefined, this["get context"]());
+        },
+        log: function() {
+            var method = this.do;
+            this.do = function(dø, k, val) {
+                log(stamp(this == "died"? "died": "did", k, val)+"  todo ["+dø
+                    .todo.filter(function(el) {
+                        return k !== el
+                    }).join(', ')+"]"
+                );
+                method.apply(this, arguments);
+            }
         }
     });
     
     function nameParameters(js, deep) {
-        // Remove anything between 'function' and '('
         var js = js || "",
-            lambda = js.trim().slice(0,8) !== 'function',
+            lambda = js.trim().slice(0,8) !== "function",
             count = 0,
             names = [],
             named = false,

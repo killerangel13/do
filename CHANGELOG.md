@@ -43,3 +43,8 @@ Set dø.Proxy to true or to a Proxy function to enable
 __1.1.7__
 
 Expose this.todo for a ready list of remaining ops
+
+__1.1.10__
+
+dø log prints for calls sent to dø.debug() instead of dø()
+

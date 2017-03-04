@@ -180,8 +180,8 @@
         for(var i=0,len=arguments.length;i<len;i++)
             args.push(arguments[i]);
 
-        if (log === true)
-            this.log();
+        if (log === true && (this.log = true))
+            this.debug();
 
         return this.construct.call(this, one, two, three, four, five);
     }
@@ -389,7 +389,7 @@
                 enclosure: this.enclosure,
                 alone: this.alone,
                 clone: true
-            });
+            }, undefined, this.log);
         },
         "stand alone": function(args) {
             this.super["stand alone"].call(this, args);
@@ -417,7 +417,7 @@
 
             return this.do.call(this);
         },
-        log: function() {
+        debug: function() {
             var that = this;
             ["did", "died"].forEach(function(pre) {
                 var method = that["it "+pre];
@@ -450,7 +450,7 @@
                 enclosure: this.enclosure,
                 alone: this.alone,
                 clone: true
-            });
+            }, undefined, this.log);
         },
         "stand alone": function(args) {
             Do.prototype["stand alone"].call(this, args);
@@ -987,9 +987,9 @@
         clone: function() {
             var args = this.arguments;
 
-            return dø((this["call context"].function || args[0]), args[1], this.next, undefined, this["get context"]());
+            return dø((this["call context"].function || args[0]), args[1], this.next, undefined, this["get context"](), undefined, this.log);
         },
-        log: function() {
+        debug: function() {
             var method = this.do;
             this.do = function(dø, k, val) {
                 log(stamp(this == "died"? "died": "did", k, val)+"  todo ["+dø
